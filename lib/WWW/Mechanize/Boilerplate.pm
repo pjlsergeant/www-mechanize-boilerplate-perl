@@ -335,7 +335,7 @@ sub create_form_method {
     );
 }
 
-=head2 delorean__configuration__flux_capacitor
+=head2 create_link_method
 
  ->create_link_method(
     method_name      => 'delorean__configuration__current_stats',
