@@ -288,9 +288,11 @@ sub create_form_method {
     $class->_auto_methods_check_params(\%args,
         {
             required => [qw/
-                method_name form_name form_description assert_location
+                method_name form_description assert_location
             /],
-            optional => ['form_button', 'transform_fields'],
+            optional => [qw/
+                form_name form_id form_number form_button transform_fields
+            /],
         });
 
     $class->meta->add_method(
@@ -299,6 +301,11 @@ sub create_form_method {
             my ( $self, @user_options ) = @_;
             $self->show_method_name( $args{'method_name'}, @user_options );
 
+            unless (defined $args{form_name} or defined $args{form_id} or
+                    defined $args{form_number}) {
+                croak "You must define one of form_name, form_id or form_number.";
+            }
+            
             # Check we're in the right place
             $self->assert_location( $args{'assert_location'} )
                 if defined $args{'assert_location'};
@@ -308,13 +315,33 @@ sub create_form_method {
 
             $self->indent_note("Searching for the $args{'form_description'} form", 1);
 
-            my $name = ref($args{'form_name'}) eq 'CODE' ?
-                $args{'form_name'}->( $self, @user_options ) :
-                $args{'form_name'};
-            my $form = $self->mech->form_name( $name );
+            if (defined $args{form_name}) {
+                my $name = ref($args{'form_name'}) eq 'CODE' ?
+                    $args{'form_name'}->( $self, @user_options ) :
+                    $args{'form_name'};
+                my $form = $self->mech->form_name( $name );
 
-            unless ( $form ) {
-                croak "Couldn't find a form with name $name";
+                unless ( $form ) {
+                    croak "Couldn't find a form with name $name";
+                }
+            } elsif (defined $args{form_id}) {
+                my $id = ref($args{'form_id'}) eq 'CODE' ?
+                    $args{'form_id'}->( $self, @user_options ) :
+                    $args{'form_id'};
+                my $form = $self->mech->form_id( $id );
+
+                unless ( $form ) {
+                    croak "Couldn't find a form with id $id";
+                }
+            } elsif (defined $args{form_number}) {
+                my $number = ref($args{'form_number'}) eq 'CODE' ?
+                    $args{'form_number'}->( $self, @user_options ) :
+                    $args{'form_number'};
+                my $form = $self->mech->form_number( $number );
+
+                unless ( $form ) {
+                    croak "Couldn't find a form number $number";
+                }                
             }
 
             $self->mech->set_fields( %$transformed_fields );
