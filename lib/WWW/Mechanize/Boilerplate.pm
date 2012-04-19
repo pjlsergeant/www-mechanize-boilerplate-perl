@@ -578,10 +578,12 @@ option and show the result of Mech's C<success()>.
 
 sub note_status {
     my ( $self ) = @_;
+    my $success = $self->mech->success;
+
     $self->indent_note("is_success() returned " . (
-        $self->mech->success ? 'true' : 'false'
+        $success ? 'true' : 'false'
     ), 1 );
-    return $self->mech->success;
+    return $success;
 }
 
 =head2 assert_location
