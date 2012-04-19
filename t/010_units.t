@@ -68,8 +68,33 @@ $client->note_status;
 $mech->set_false( 'success' );
 $client->note_status;
 
+# Check the right stuff showed up in the notes
 is( scalar @notes, 2, "Two notes generated" );
 like( $notes[0], qr/true/,  "mech success is true for first note" );
 like( $notes[1], qr/false/, "mech success is false for second note");
+
+# Test the location assertion
+{
+    # Make the failed location assertion just return 0 instead of croaking
+    no warnings qw/redefine once/;
+    local *WWW::Mechanize::Boilerplate::assert_location_failed = sub { return 0; };
+
+    # Set up a ->uri method for the mech
+    my $uri = Test::MockObject->new();
+    $mech->set_always( uri => $uri );
+
+    for my $test (
+        { uri => 'http://foo/bar', assert => 'http://foo/bar', expect => 'pass' },
+        { uri => 'http://foo/bar', assert => 'http://bar/foo', expect => 'fail' },
+        { uri => 'http://foo/bar', assert => qr/foo/, expect => 'pass' },
+        { uri => 'http://foo/bar', assert => qr/oof/, expect => 'fail' },
+    ) {
+        $uri->set_always( path_query => $test->{'uri'} );
+        my $result = $client->assert_location( $test->{'assert'} );
+        is( $result, ( $test->{'expect'} eq 'pass' ? 1 : 0 ),
+            sprintf("Assert location [%s] on [%s] should [%s]",
+                @$test{qw/assert uri expect/} ) );
+    }
+}
 
 done_testing();
