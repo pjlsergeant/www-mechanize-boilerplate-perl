@@ -627,7 +627,8 @@ sub assert_location_failed {
 
 Peter Sergeant - C<pete@clueball.com> on behalf of
 L<Net-A-Porter|http://www.net-a-porter.com/>. Thanks to Dave Cross for making
-the form methods more useful and some sanity checking.
+the form methods more useful, some sanity checking, and contributing the BBC
+example.
 
 =cut
 
