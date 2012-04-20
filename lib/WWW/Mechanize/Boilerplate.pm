@@ -117,7 +117,7 @@ And a more complicated one for a method for submitting it:
 
 And you'd use these as:
 
- $mech->delorean__configuration
+ $client->delorean__configuration
       ->delorean__configuration__flux_capacitor( jigawatts => 10_000 );
 
 Optionally seeing the following output, via L<Test::More>'s C<note()>.
@@ -134,12 +134,26 @@ Optionally seeing the following output, via L<Test::More>'s C<note()>.
  #       URL /delorean/configuration?updated=1 retrieved successfully via HTTP
  #       No status message shown
 
-=head1 ARCHITECTUAL OVERVIEW
+=head1 ARCHITECTURAL OVERVIEW
 
 When you instantiate a new object of this class, it needs a L<WWW::Mechanize>
-delegate to perform its actual actions.
+delegate to perform its actual actions. You're expect instead however to create
+a subclass of this module in to which to create your actions:
 
-It also provides a rich interface for you to poke around in the methods created.
+ # Create a subclass to hold your methods
+ package Test::My::Company::Client;
+ use base 'WWW::Mechanize::Boilerplate';
+
+ ->create_fetch_method(
+    method_name      => 'delorean__configuration',
+    page_description => 'configuration page for the Delorean',
+    page_url         => '/delorean/configuration'
+ );
+
+ # And then in a test file:
+ my $mech = WWW::Mechanize->new();
+ my $client = Test::My::Company::Client->new({ mech => $mech });
+ $client->delorean__configuration();
 
 We document the method-creation methods in L<METHOD CREATION METHODS> below, and
 we document the interface in L<INTERFACE>.
