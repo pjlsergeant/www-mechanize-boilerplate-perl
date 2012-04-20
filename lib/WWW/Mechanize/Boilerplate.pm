@@ -134,7 +134,7 @@ Optionally seeing the following output, via L<Test::More>'s C<note()>.
  #       URL /delorean/configuration?updated=1 retrieved successfully via HTTP
  #       No status message shown
 
-=head1 ARCHITECTURAL OVERVIEW
+=head1 SYNOPSIS
 
 When you instantiate a new object of this class, it needs a L<WWW::Mechanize>
 delegate to perform its actual actions. You're expect instead however to create
@@ -144,7 +144,7 @@ a subclass of this module in to which to create your actions:
  package Test::My::Company::Client;
  use base 'WWW::Mechanize::Boilerplate';
 
- ->create_fetch_method(
+ __PACKAGE__->create_fetch_method(
     method_name      => 'delorean__configuration',
     page_description => 'configuration page for the Delorean',
     page_url         => '/delorean/configuration'
