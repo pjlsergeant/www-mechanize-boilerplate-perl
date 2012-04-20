@@ -52,7 +52,7 @@ I<Then in your test script>
 
  my $client = Test::My::Company::Client->new();
 
- $client->delorean__configuration();
+ $client->delorean__configuration()
         ->delorean__configuration__flux_capacitory( jigawatts => 10_000 );
 
 I<Pretty debugging output>
