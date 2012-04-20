@@ -22,50 +22,148 @@ our @notes;
 # Set up a fake mech, and instantiate a new client
 my $mech = Test::MockObject->new();
 $mech->set_isa('WWW::Mechanize');
+
 my $client = WWW::Mechanize::Boilerplate->new({ mech => $mech });
+
 my $uri = Test::MockObject->new();
 $uri->set_always( path_query => '/foo/bar' );
-$mech->set_always( uri => $uri );
+$mech->set_always( uri => $uri ); # General URI method
+$mech->set_always( url => 'http://www.wired.com/' ); # Used for find_link
+
 
 # Capture stuff sent to various mechanize methods
 our @mech_actions;
 sub add_action { my $type = shift; my $class = shift; push( @mech_actions, [$type, @_] ) }
-$mech->mock( get     => sub { add_action('get', @_) } );
-$mech->mock( success => sub { add_action('success', @_); return 1 } );
+for (qw/get success form_name form_id set_fields submit_form find_link flag/) {
+    my $method = $_;
+    $mech->mock( $method => sub { add_action($method, @_); return $mech } );
+}
 
-# Set up a simple fetch method
-$client->create_fetch_method(
-    method_name      => 'new_fetch',
-    page_description => 'some page',
-    page_url         => 'http://foo/bar',
-);
-
-# Check it showed up and works
-{
+# Test cases
+for my $test (
+    {
+        description => "Simplest fetch method",
+        method      => {
+            type             => 'fetch',
+            call_with        => [],
+            page_description => 'some page',
+            page_url         => 'http://foo/bar'
+        },
+        expected    => {
+            actions => [
+                [ get => 'http://foo/bar' ],
+                [ 'success' ]
+            ]
+        }
+    },
+    {
+        description => "Parameterized fetch method",
+        method      => {
+            type             => 'fetch',
+            call_with        => ['roomba'],
+            page_description => 'some page',
+            page_url         => 'http://foo/bar?zoomba=',
+            required_param   => 'zoomba'
+        },
+        expected    => {
+            actions => [
+                [ get => 'http://foo/bar?zoomba=roomba' ],
+                [ 'success' ]
+            ]
+        }
+    },
+    {
+        description => "Simple form method",
+        method      => {
+            type             => 'form',
+            call_with        => [{ foo => 'bar' }],
+            form_name        => sub {'boom'},
+            form_description => 'doom',
+            assert_location  => '/foo/bar',
+            transform_fields => sub { return $_[1] }
+        },
+        expected    => {
+            actions => [
+                [ form_name  => 'boom' ],
+                [ set_fields => foo => 'bar' ],
+                [ submit_form => fields => { foo => 'bar' } ],
+                [ 'success' ]
+            ]
+        }
+    },
+    {
+        description => "Form via id",
+        method      => {
+            type             => 'form',
+            call_with        => [{ foo => 'bar' }],
+            form_id          => 'boom',
+            form_description => 'doom',
+            assert_location  => '/foo/bar',
+            transform_fields => sub { return $_[1] }
+        },
+        expected    => {
+            actions => [
+                [ form_id    => 'boom' ],
+                [ set_fields => foo => 'bar' ],
+                [ submit_form => fields => { foo => 'bar' } ],
+                [ 'success' ]
+            ]
+        }
+    },
+    {
+        description => "Simple link method",
+        method      => {
+            type             => 'link',
+            call_with        => [],
+            assert_location  => '/foo/bar',
+            link_description => 'somelink',
+            find_link        => { boom => 'bang' }
+        },
+        expected    => {
+            actions => [
+                [ find_link  => boom => 'bang' ],
+                [ get        => 'http://www.wired.com/' ],
+                [ 'success' ]
+            ]
+        }
+    },
+    {
+        description => "Simple custom method",
+        method      => {
+            type             => 'custom',
+            call_with        => [],
+            handler          => sub { $_[0]->mech->flag },
+        },
+        expected    => {
+            actions => [
+                [ 'flag'    ],
+                [ 'success' ]
+            ]
+        }
+    },
+) {
+    # Localize our capture vars
     local @notes;
     local @mech_actions;
 
-    $client->new_fetch();
+    # Generate a sensible method name
+    my $type = delete $test->{'method'}->{'type'};
+    my $args = delete $test->{'method'}->{'call_with'};
+    my $method_name = sprintf('test_%s_%s', $type, ($test + 0) );
 
-    # Check diagnostic outputs
-    is_deeply(
-        \@notes,
-        [split(/\n/,
-"->new_fetch()
-Retrieving the some page: [http://foo/bar]
-Retrieved the some page : [/foo/bar]
-is_success() returned true"
-        )],
-        "Output as expected from new_fetch"
+    # Create the method
+    my $create_method = "create_${type}_method";
+    $client->$create_method(
+        method_name => $method_name,
+        %{ $test->{'method'} }
     );
 
-    # Check action outputs
-    is_deeply(
-        \@mech_actions,
-        [
-            [ get => 'http://foo/bar' ],
-            [ 'success' ]
-        ],
-        "Actions as expected from new_fetch"
-    );
+    # Execute it
+    $client->$method_name( @$args );
+
+    # Check the output
+    is_deeply( \@mech_actions, $test->{'expected'}->{'actions'},
+        "Output steps matched for: " . $test->{'description'} );
 }
+
+done_testing();

@@ -256,17 +256,20 @@ B<Required:>
 
 C<method_name> - name of the method to create
 
-C<form_name> - the name attribute of the target form. Passed to
-L<WWW::Mechanize>'s C<form_name()> method. You can pass in a coderef
-here, which will get called just like C<transform_fields> and should
-return a string.
-
 C<form_description> - the human-readable description of the form you're
 submitting. You don't need to append the word 'form' to this.
 
 C<assert_location> - Argument to pass to C<assert_location()>
 
+C<form_*> - one of the form resolvers listed below
+
 B<Optional:>
+
+C<form_name> - the name attribute of the target form. Passed to
+L<WWW::Mechanize>'s C<form_name()> method. You can pass in a coderef
+here, which will get called just like C<transform_fields> and should
+return a string. Instead of C<form_name> you can use C<form_id> or
+C<form_button> to select forms by ID or button.
 
 C<transform_fields> - a code-ref. Will receive $self and the methods arguments,
 and expects you to return a hash-ref suitable for passing to L<WWW::Mechanize>'s
@@ -281,6 +284,8 @@ called just like C<transform_fields> and should return a string.
 
 =cut
 
+my @form_resolvers = qw/form_name form_id form_number/;
+
 sub create_form_method {
     my ( $class, %args ) = @_;
 
@@ -290,8 +295,8 @@ sub create_form_method {
             required => [qw/
                 method_name form_description assert_location
             /],
-            optional => [qw/
-                form_name form_id form_number form_button transform_fields
+            optional => [@form_resolvers, qw/
+                form_button transform_fields
             /],
         });
 
@@ -301,11 +306,9 @@ sub create_form_method {
             my ( $self, @user_options ) = @_;
             $self->show_method_name( $args{'method_name'}, @user_options );
 
-            unless (defined $args{form_name} or defined $args{form_id} or
-                    defined $args{form_number}) {
-                croak "You must define one of form_name, form_id or form_number.";
-            }
-            
+            croak "You must define one of form_name, form_id or form_number."
+                unless map { defined $args{$_} ? (1) : () } @form_resolvers;
+
             # Check we're in the right place
             $self->assert_location( $args{'assert_location'} )
                 if defined $args{'assert_location'};
@@ -315,33 +318,20 @@ sub create_form_method {
 
             $self->indent_note("Searching for the $args{'form_description'} form", 1);
 
-            if (defined $args{form_name}) {
-                my $name = ref($args{'form_name'}) eq 'CODE' ?
-                    $args{'form_name'}->( $self, @user_options ) :
-                    $args{'form_name'};
-                my $form = $self->mech->form_name( $name );
+            # Attempt to find the right form
+            for my $r ( @form_resolvers ) {
+                next unless defined $args{$r};
+
+                my $name = ref($args{$r}) eq 'CODE' ?
+                    $args{$r}->( $self, @user_options ) :
+                    $args{$r};
+                my $form = $self->mech->$r( $name );
 
                 unless ( $form ) {
-                    croak "Couldn't find a form with name $name";
+                    croak "Couldn't find a form with $r [$name]";
                 }
-            } elsif (defined $args{form_id}) {
-                my $id = ref($args{'form_id'}) eq 'CODE' ?
-                    $args{'form_id'}->( $self, @user_options ) :
-                    $args{'form_id'};
-                my $form = $self->mech->form_id( $id );
 
-                unless ( $form ) {
-                    croak "Couldn't find a form with id $id";
-                }
-            } elsif (defined $args{form_number}) {
-                my $number = ref($args{'form_number'}) eq 'CODE' ?
-                    $args{'form_number'}->( $self, @user_options ) :
-                    $args{'form_number'};
-                my $form = $self->mech->form_number( $number );
-
-                unless ( $form ) {
-                    croak "Couldn't find a form number $number";
-                }                
+                last;
             }
 
             $self->mech->set_fields( %$transformed_fields );
@@ -632,5 +622,13 @@ sub assert_location_failed {
     my ( $self, $assertion, $url ) = @_;
     croak "Current URL [$url] did not match assertion [$assertion]";
 }
+
+=head1 AUTHOR
+
+Peter Sergeant - C<pete@clueball.com> on behalf of
+L<Net-A-Porter|http://www.net-a-porter.com/>. Thanks to Dave Cross for making
+the form methods more useful and some sanity checking.
+
+=cut
 
 1;
