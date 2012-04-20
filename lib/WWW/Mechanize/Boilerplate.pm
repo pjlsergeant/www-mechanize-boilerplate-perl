@@ -7,7 +7,10 @@ use Carp qw(croak shortmess);
 use Data::Dump qw(dump);
 use Moose;
 
-has 'mech' => ( isa => 'WWW::Mechanize', is => 'rw' );
+has 'mech' => ( isa => 'WWW::Mechanize', is => 'rw', default => sub {
+    require WWW::Mechanize;
+    return WWW::Mechanize->new();
+} );
 
 =head1 NAME
 
@@ -16,6 +19,58 @@ WWW::Mechanize::Boilerplate - Compose Mechanize macros from specifications
 =head1 DESCRIPTION
 
 Create WWW::Mechanize `macros` with appropriate boiler plate
+
+=head1 SYNOPSIS
+
+I<Create a subclass to hold your methods>
+
+ package Test::My::Company::Client;
+ use base 'WWW::Mechanize::Boilerplate';
+
+ __PACKAGE__->create_fetch_method(
+    method_name      => 'delorean__configuration',
+    page_description => 'configuration page for the Delorean',
+    page_url         => '/delorean/configuration'
+ );
+
+ __PACKAGE__->create_form_method(
+    method_name       => 'delorean__configuration__flux_capacitor',
+    form_name         => 'form-flux-capacitor'
+    form_description  => 'recalibration form',
+    assert_location   => qr!^/delorean/configuration/!,
+    transform_fields  => sub {
+        my ( $self, $units, $value ) = @_;
+        return {
+            value => $value,
+            units => $units,
+            understand_risks => 'confirmed'
+        };
+    },
+ );
+
+I<Then in your test script>
+
+ my $client = Test::My::Company::Client->new();
+
+ $client->delorean__configuration();
+        ->delorean__configuration__flux_capacitory( jigawatts => 10_000 );
+
+I<Pretty debugging output>
+
+ #   ->delorean__configuration
+ #       Retrieving the configuration page for the Delorean
+ #       URL /delorean/configuration retrieved successfully via HTTP
+ #       Retrieved the configuration page for the Delorean
+ #       No status message shown
+ #   ->delorean__configuration__flux_capacitor( 'jigawatts', 10_000 )
+ #       URL [/delorean/configuration] matched assertion
+ #       Searching for the recalibration form
+ #       Submitting recalibration form
+ #       URL /delorean/configuration?updated=1 retrieved successfully via HTTP
+ #       No status message shown
+
+We document the method-creation methods in L<METHOD CREATION METHODS> below, and
+we document the interface in L<INTERFACE>.
 
 =head1 BACKGROUND
 
@@ -134,29 +189,16 @@ Optionally seeing the following output, via L<Test::More>'s C<note()>.
  #       URL /delorean/configuration?updated=1 retrieved successfully via HTTP
  #       No status message shown
 
-=head1 SYNOPSIS
+=head1 INSTANTIATION
 
-When you instantiate a new object of this class, it needs a L<WWW::Mechanize>
-delegate to perform its actual actions. You're expect instead however to create
-a subclass of this module in to which to create your actions:
+=head2 new
 
- # Create a subclass to hold your methods
- package Test::My::Company::Client;
- use base 'WWW::Mechanize::Boilerplate';
+ ->new();
+ ->new({ mech => WWW::Mechanize->new() });
 
- __PACKAGE__->create_fetch_method(
-    method_name      => 'delorean__configuration',
-    page_description => 'configuration page for the Delorean',
-    page_url         => '/delorean/configuration'
- );
-
- # And then in a test file:
- my $mech = WWW::Mechanize->new();
- my $client = Test::My::Company::Client->new({ mech => $mech });
- $client->delorean__configuration();
-
-We document the method-creation methods in L<METHOD CREATION METHODS> below, and
-we document the interface in L<INTERFACE>.
+Accepts a hashref containing - for now - a single argument of C<mech>
+which should be a WWW::Mechanize subclass. If you don't provide one,
+we'll create a default one.
 
 =head1 METHOD CREATION METHODS
 
@@ -639,10 +681,14 @@ sub assert_location_failed {
 
 =head1 AUTHOR
 
-Peter Sergeant - C<pete@clueball.com> on behalf of
-L<Net-A-Porter|http://www.net-a-porter.com/>. Thanks to Dave Cross for making
-the form methods more useful, some sanity checking, and contributing the BBC
-example.
+Peter Sergeant - C<pete@clueball.com>
+
+The original idea for this was conceived during my time working at the most
+excellent L<Net-A-Porter|http://www.net-a-porter.com/>, and the work needed to
+create this release during one of their regular hack days.
+
+L<Dave Cross|http://search.cpan.org/~davecross/> contributed invaluable ideas
+and code.
 
 =cut
 
