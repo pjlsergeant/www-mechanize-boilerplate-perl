@@ -462,7 +462,7 @@ C<handler> - sub ref we hand off to
 
 B<Optional:>
 
-C<assert_location> - argument to pass to L<Test::XT::Flow>'s C<assert_location>
+C<assert_location> - argument to pass to C<assert_location>
 
 =cut
 
