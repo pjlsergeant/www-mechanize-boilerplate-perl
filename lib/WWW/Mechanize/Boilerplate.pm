@@ -116,7 +116,7 @@ should be used for over 1,000 I<jigawtts>, and one for under. So you need to
 add the form selection code in too.
 
 Did I mention 14 different test scripts use this page and need to submit the
-jigawatt form, and the team that sits across the office for you are making
+jigawatt form, and the team that sits across the office from you are making
 noises about changing the form structure in the next iteration?
 
 =head2 Abstraction
